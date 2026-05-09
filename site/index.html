@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>84V Scale Server – Projektplan</title>
+<meta name="description" content="Eichfähiges Anzeige- und Wiegemodul für Fahrzeugwaagen mit Rhewa 84 Vario. Plattform auf Raspberry Pi CM4." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+
+  <!-- ─────────── Sidebar ─────────── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">84V</div>
+      <div class="brand-text">
+        <div class="t1">Scale Server</div>
+        <div class="t2">Rhewa 84 Vario · Modul</div>
+      </div>
+    </div>
+    <nav class="toc">
+      <div class="group">Übersicht</div>
+      <a href="#hero"><span class="num">↑</span>Start</a>
+      <a href="#doc-01"><span class="num">01</span>Systemüberblick</a>
+      <a href="#doc-02"><span class="num">02</span>Eichrecht</a>
+      <a href="#doc-03"><span class="num">03</span>Hardware</a>
+      <a href="#doc-04"><span class="num">04</span>Software-Architektur</a>
+      <a href="#doc-05"><span class="num">05</span>Features</a>
+      <a href="#doc-06"><span class="num">06</span>Rhewa-Protokoll</a>
+      <a href="#doc-07"><span class="num">07</span>Visualisierung</a>
+      <a href="#doc-08"><span class="num">08</span>Betrieb &amp; Deployment</a>
+      <a href="#doc-09"><span class="num">09</span>Roadmap &amp; Risiken</a>
+    </nav>
+  </aside>
+
+  <!-- ─────────── Main ─────────── -->
+  <main>
+
+    <!-- Hero -->
+    <section id="hero" class="hero">
+      <span class="eyebrow"><span class="dot"></span>Projektplan · Stand 2026-05-09</span>
+      <h1>Eichfähiges Anzeige- &amp; Wiegemodul<br/>für Fahrzeugwaagen mit Rhewa 84 Vario</h1>
+      <p class="lede">
+        Ein <strong>Raspberry Pi CM4</strong>-Server bündelt Live-Anzeige,
+        Wägescheindruck, Selbstbedienung und ERP-Anbindung – mit strikt
+        getrenntem, signiertem Legal-Kern nach <strong>WELMEC 7.2</strong>.
+        Die metrologische Verantwortung verbleibt beim Rhewa 84 V.
+      </p>
+      <div class="meta">
+        <div><b>Branch</b> · claude/plan-weighing-display-module-hCZWb</div>
+        <div><b>Plattform</b> · Raspberry Pi Compute Module 4</div>
+        <div><b>Anwendung</b> · Fahrzeugwaagen / NAWI</div>
+      </div>
+
+      <div class="facts">
+        <div class="fact"><div class="k">Messwert-Quelle</div><div class="v">Rhewa 84 Vario</div></div>
+        <div class="fact"><div class="k">Klassen WELMEC 7.2</div><div class="v">L · T · D (S)</div></div>
+        <div class="fact"><div class="k">Aufwand grob</div><div class="v">≈ 440 PT</div></div>
+        <div class="fact"><div class="k">Meilensteine</div><div class="v">M0 → M6</div></div>
+      </div>
+    </section>
+
+    <!-- ─────────── 01 Systemüberblick ─────────── -->
+    <section id="doc-01" class="doc">
+      <div class="doc-head">
+        <span class="num">01</span><h2>Systemüberblick</h2>
+        <span class="sub">Architektur · Komponenten · Datenfluss</span>
+      </div>
+
+      <p>
+        Das Modul ergänzt die bestehende Fahrzeugwaage um ein modernes,
+        vernetztes Anzeige- und Wiegesystem. Es <strong>ersetzt nicht</strong>
+        die eichamtliche Anzeige des Rhewa 84 V, sondern wirkt als
+        peripheres Gerät nach WELMEC 7.2.
+      </p>
+
+      <h3>Kernziele</h3>
+      <div class="cards cols-3">
+        <div class="card"><div class="icon">📟</div><h4>Eichfähige Mitanzeige</h4><p>Bruttogewicht an einem zweiten Ort darstellen – mit Stillstands- und Statusbits.</p></div>
+        <div class="card"><div class="icon">🧾</div><h4>Wägescheine</h4><p>Erstellen, drucken, archivieren – mit DSAR-Eintrag und Hash-Kette.</p></div>
+        <div class="card"><div class="icon">🚛</div><h4>1./2. Wägung</h4><p>Tara-Verwaltung pro Fahrzeug, Vor- und Nachwägung mit Plausibilitäten.</p></div>
+        <div class="card"><div class="icon">🔌</div><h4>ERP-Datenrückgrat</h4><p>REST, CSV, optional MQTT/OPC-UA – immer mit DSAR-Referenz.</p></div>
+        <div class="card"><div class="icon">🪪</div><h4>Selbstbedienung</h4><p>Fahrer-Identifikation per RFID/Barcode mit Touch-Wizard.</p></div>
+        <div class="card"><div class="icon">📈</div><h4>Auswertung &amp; Audit</h4><p>Reports, Eich-Audit-Export, getrennte App- und Eich-Logs.</p></div>
+      </div>
+
+      <h3>Komponentendiagramm</h3>
+      <pre class="diagram">                            ┌──────────────────────────┐
+                            │   Rhewa 84 Vario (legal) │
+                            │   Wägeterminal,          │
+                            │   Anzeige, Eichplombe    │
+                            └──────────┬───────────────┘
+                                       │ RS232/RS485 (eichgesicherter
+                                       │ Telegrammausgang, kontinuierlich
+                                       │ + Anforderung)
+                                       ▼
+┌────────────────────────────────────────────────────────────────────┐
+│  84V Scale Server  (Raspberry Pi CM4 auf Industrie-Carrier)        │
+│                                                                    │
+│  ┌──────────────┐  ┌────────────────┐  ┌────────────────────────┐  │
+│  │ scale-bridge │→ │ weight-broker  │→ │ legal-display (Qt/Web) │  │
+│  │ (legal Teil) │  │ (legal Teil)   │  │ + DSAR-Logbuch         │  │
+│  └──────────────┘  └───────┬────────┘  └────────────────────────┘  │
+│                            │ signierte Messwert-Events             │
+│                            ▼                                       │
+│  ┌────────────────────────────────────────────────────────────┐    │
+│  │  Wiege-Applikation  (nicht-legaler Teil)                   │    │
+│  │  - Wägescheine, Stammdaten, Disposition                    │    │
+│  │  - Web-UI (Waagmeister + Selbstbedienung)                  │    │
+│  │  - REST/MQTT/OPC-UA, Druck-Service, Backup                 │    │
+│  └────────────────────────────────────────────────────────────┘    │
+└──────────┬─────────────────────┬────────────────────┬──────────────┘
+           ▼                     ▼                    ▼
+   Touch-Display           Selbstbedien-          ERP /
+   Waagmeister             säule (Außen)          Disposition
+                           RFID/Barcode/Drucker</pre>
+
+      <h3>Logischer Datenfluss</h3>
+      <ol>
+        <li>Rhewa 84 V sendet zyklisch (z. B. 10 Hz) Bruttogewicht inkl. Stillstands-, Null-, Vorzeichen- und Status-Bits.</li>
+        <li><code>scale-bridge</code> parst Telegramm, prüft <strong>BCC/Checksumme</strong>, normalisiert auf Protobuf + Ed25519-Signatur.</li>
+        <li><code>weight-broker</code> verteilt Events an Subscriber (legales Display, Applikation).</li>
+        <li>Bei einer Wägung erzeugt <code>legal-display</code> einen <mark class="k">eichpflichtigen Datensatz</mark> (DSAR) mit Hash-Kette.</li>
+        <li>Die Applikation referenziert nur die DSAR-ID; Gewichtswerte werden niemals verändert.</li>
+      </ol>
+    </section>
+
+    <!-- ─────────── 02 Eichrecht ─────────── -->
+    <section id="doc-02" class="doc">
+      <div class="doc-head">
+        <span class="num">02</span><h2>Eichrechtliche Anforderungen</h2>
+        <span class="sub">MID · WELMEC 7.2 · DSAR</span>
+      </div>
+
+      <p>
+        Fahrzeugwaagen unterliegen MessEG/MessEV (DE) und MID 2014/32/EU
+        (Anhang V – NAWI). Für Software gilt <strong>WELMEC 7.2</strong>.
+        Da der Wert vom bereits zugelassenen Rhewa 84 V stammt, ist das
+        Modul ein <em>peripheres Gerät</em>.
+      </p>
+
+      <h3>Software-Trennung</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Bereich</th><th>Legal</th><th>Nicht-legal</th></tr></thead>
+          <tbody>
+            <tr><td>Telegramm-Empfang vom Rhewa</td><td><span class="badge legal">✓</span></td><td>—</td></tr>
+            <tr><td>Checksum / BCC-Prüfung</td><td><span class="badge legal">✓</span></td><td>—</td></tr>
+            <tr><td>Anzeige Bruttogewicht + Status</td><td><span class="badge legal">✓</span></td><td>—</td></tr>
+            <tr><td>Eichpflichtiges Logbuch (DSAR)</td><td><span class="badge legal">✓</span></td><td>—</td></tr>
+            <tr><td>Wägescheindruck (gewichtsführend)</td><td><span class="badge legal">✓</span></td><td>—</td></tr>
+            <tr><td>Stammdaten · Disposition</td><td>—</td><td><span class="badge app">✓</span></td></tr>
+            <tr><td>Web-UI Backoffice</td><td>—</td><td><span class="badge app">✓</span></td></tr>
+            <tr><td>ERP-Schnittstelle</td><td>Werte unverändert</td><td><span class="badge app">Steuerdaten</span></td></tr>
+            <tr><td>Auswertung · Reports · Export</td><td>—</td><td><span class="badge app">✓</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Durchsetzung: getrennte Linux-User · separates dm-verity-Volume <code>/opt/legal</code> · schmale, einseitige Schnittstelle (Unix-Domain-Socket + Protobuf).</p>
+
+      <h3>Eichpflichtiges Logbuch (DSAR)</h3>
+      <div class="cards cols-2">
+        <div class="card legal">
+          <h4>Was wird gespeichert</h4>
+          <ul>
+            <li>Laufende Nummer + Zeitstempel (UTC, monoton)</li>
+            <li>Bruttowert, Einheit, Stillstand, Vorzeichen</li>
+            <li>Quelle (Rhewa-Seriennr.) + Operator/Fahrzeug-ID</li>
+            <li>Hash des vorherigen Eintrags (Hash-Chain)</li>
+            <li>Ed25519-Signatur über den Datensatz</li>
+          </ul>
+        </div>
+        <div class="card legal">
+          <h4>Wie wird geschützt</h4>
+          <ul>
+            <li>Append-only, nicht löschbar während Aufbewahrungsfrist</li>
+            <li>Redundanz: SQLite/WAL + Mirror auf zweitem Datenträger</li>
+            <li>Anzeige &amp; Druck immer mit eindeutiger DSAR-Nummer</li>
+            <li>Sichtbar im Audit-Browser, exportierbar für Eichbehörde</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Schutz vor Veränderung</h3>
+      <ul>
+        <li>Secure Boot (CM4 EEPROM, signierter Bootloader)</li>
+        <li><code>/opt/legal</code> als <strong>dm-verity</strong> Read-only Volume; Hash-Tree im Bootimage signiert</li>
+        <li>Hardware-W&amp;M-Schalter → GPIO; Statuswechsel im Eventlog</li>
+        <li>Plombiertes Innenfach im Schaltschrank für CM4 + Rhewa-Anschluss</li>
+        <li>Updates des legalen Teils nur als signiertes Bundle, mit Versionswechsel-Eintrag</li>
+      </ul>
+
+      <h3>Identifikation der legalen Software (P3)</h3>
+      <div class="mockup" style="max-width: 520px;">
+        <div class="titlebar"><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>scalectl legal-info</div>
+        <div style="padding: 18px 20px; font-family: var(--mono); font-size: 13px; color: var(--text-dim); line-height: 1.7;">
+          <div><span style="color: var(--accent);">legal-bridge</span>     v1.4.0  build 2026-04-22</div>
+          <div><span style="color: var(--accent);">weight-broker</span>    v1.4.0  build 2026-04-22</div>
+          <div><span style="color: var(--accent);">legal-display</span>    v1.4.0  build 2026-04-22</div>
+          <div style="margin-top: 8px;">SHA-256: <span style="color: var(--text);">7af3 0e21 ... b59c</span></div>
+          <div>Signed by: <span style="color: var(--text);">PTB-Approval-Key #042</span></div>
+          <div>Rhewa SN: <span style="color: var(--text);">RV-12345</span> · FW <span style="color: var(--text);">2.07</span></div>
+          <div>W&amp;M-Switch: <span class="pill" style="margin-left: 4px;">CLOSED</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 03 Hardware ─────────── -->
+    <section id="doc-03" class="doc">
+      <div class="doc-head">
+        <span class="num">03</span><h2>Hardware</h2>
+        <span class="sub">CM4-Carrier · Schnittstellen · Schaltschrank</span>
+      </div>
+
+      <h3>Anforderungen</h3>
+      <div class="cards cols-4">
+        <div class="card"><div class="icon">🌡️</div><h4>–20 … +55 °C</h4><p>24/7 Industrie, beheizte Außensäule.</p></div>
+        <div class="card"><div class="icon">⚡</div><h4>USV-gepuffert</h4><p>10 min LiFePO4, sauberes Shutdown.</p></div>
+        <div class="card"><div class="icon">🔒</div><h4>Plombierbar</h4><p>Innenfach IP54 für CM4 &amp; Rhewa-Karte.</p></div>
+        <div class="card"><div class="icon">📡</div><h4>Galvanisch getrennt</h4><p>RS232/RS485 isoliert zur Wägeelektronik.</p></div>
+      </div>
+
+      <h3>Rechnerplattform</h3>
+      <div class="cards cols-2">
+        <div class="card">
+          <h4>Empfohlen: Raspberry Pi CM4</h4>
+          <ul>
+            <li>4 GB RAM, 32 GB eMMC (kein Lite)</li>
+            <li>Industrie-Carrier mit RS232/RS485, CAN, DI/DO</li>
+            <li>2× Gigabit-Ethernet, HDMI + DSI, RTC, TPM 2.0</li>
+            <li>24 V DC industrietauglich, Verpolschutz</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Alternative: Industrie-PC x86</h4>
+          <ul>
+            <li>Intel Atom x6000 oder vergleichbar</li>
+            <li>Wenn ein zertifizierter OS-Stack erforderlich</li>
+            <li>Schnittstellen identisch zur CM4-Variante</li>
+            <li>Höhere Stückkosten, längere Verfügbarkeit</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Speicher-Layout</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Speicher</th><th>Inhalt</th><th>Modus</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">eMMC (CM4)</td><td>OS + Legal-Bundle</td><td><span class="badge legal">read-only / dm-verity</span></td></tr>
+            <tr><td class="mono">M.2 NVMe 256 GB</td><td>PostgreSQL, App-Daten, Logs</td><td><span class="badge app">read-write</span></td></tr>
+            <tr><td class="mono">USB-SSD 256 GB</td><td>DSAR + Eventlog Mirror</td><td><span class="badge legal">append-only</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Anzeige- und Bedienelemente</h3>
+      <div class="cards cols-3">
+        <div class="card"><h4>Waagmeister</h4><p>15.6"–21.5" Touch IP65, 1000 cd/m², HDMI + USB-Touch · Etiketten- und A4-Drucker.</p></div>
+        <div class="card"><h4>Außensäule</h4><p>12" Outdoor-Touch, RFID, Barcodescanner, Thermo-Belegdrucker, Heizung, Intercom optional.</p></div>
+        <div class="card"><h4>Großanzeige</h4><p>LED-Außenanzeige (RS485/Ethernet), bedient direkt aus dem signierten Stream.</p></div>
+      </div>
+
+      <h3>Peripherie &amp; Feldgeräte</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Gerät</th><th>Anbindung</th><th>Zweck</th></tr></thead>
+          <tbody>
+            <tr><td>Ampel rot/grün</td><td class="mono">Relais-Ausgang</td><td>Ein-/Ausfahrt</td></tr>
+            <tr><td>Schranke</td><td class="mono">Relais + DI-Endschalter</td><td>Zufahrtssteuerung</td></tr>
+            <tr><td>Lichtschranke Achserkennung</td><td class="mono">DI</td><td>Plausibilität / Aufzeichnung</td></tr>
+            <tr><td>Kennzeichenkamera</td><td class="mono">IP/PoE</td><td>OCR, Beweisbild</td></tr>
+            <tr><td>RFID-Leser</td><td class="mono">USB/RS485</td><td>Fahrzeug-ID Selbstbedienung</td></tr>
+            <tr><td>Etikettendrucker</td><td class="mono">USB/Ethernet</td><td>Wägeschein</td></tr>
+            <tr><td>LED-Großanzeige</td><td class="mono">RS485/Ethernet</td><td>Wertdarstellung</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─────────── 04 Software-Architektur ─────────── -->
+    <section id="doc-04" class="doc">
+      <div class="doc-head">
+        <span class="num">04</span><h2>Software-Architektur</h2>
+        <span class="sub">Services · Persistenz · IPC</span>
+      </div>
+
+      <h3>Prozesslandschaft</h3>
+      <h4>Legaler Teil <span class="badge legal">/opt/legal · dm-verity</span></h4>
+      <div class="cards cols-2">
+        <div class="card legal"><h4>scale-bridge</h4><p>Serielle Anbindung Rhewa, Telegramm-Parsing, BCC-Prüfung. <code>legal-bridge</code></p></div>
+        <div class="card legal"><h4>weight-broker</h4><p>Verteilen signierter Messwert-Events via Unix-Socket. <code>legal-broker</code></p></div>
+        <div class="card legal"><h4>legal-display</h4><p>Vollbild-Wertanzeige (Qt/QML), DSAR-Logbuch, Wägeschein-Druck (gewichtsführend). <code>legal-display</code></p></div>
+        <div class="card legal"><h4>legal-audit</h4><p>Schreibt DSAR + Eventlog signiert, spiegelt auf zweiten Datenträger. <code>legal-audit</code></p></div>
+      </div>
+
+      <h4>Nicht-legaler Teil <span class="badge app">/opt/app · regulär updatebar</span></h4>
+      <div class="cards cols-3">
+        <div class="card app"><h4>scaleserver-api</h4><p>REST/JSON + WebSocket, Auth, Stammdaten.</p></div>
+        <div class="card app"><h4>scaleserver-web</h4><p>Web-UI, statisches Frontend mit Reverse-Proxy.</p></div>
+        <div class="card app"><h4>scaleserver-print</h4><p>Druckaufträge (nicht-gewichtsführend), Layoutverwaltung.</p></div>
+        <div class="card app"><h4>scaleserver-integration</h4><p>ERP-Sync, MQTT-Bridge, OPC-UA-Server.</p></div>
+        <div class="card app"><h4>scaleserver-io</h4><p>GPIO/DI/DO, Ampel, Schranke, Kamera-Trigger.</p></div>
+        <div class="card app"><h4>scaleserver-rfid</h4><p>RFID-/Barcode-Reader, Selbstbedienlogik.</p></div>
+      </div>
+
+      <h3>IPC – legal ↔ nicht-legal</h3>
+      <p>
+        Ausschließlich über <code>weight-broker</code> per Unix-Domain-Socket.
+        Datenformat = signiertes Protobuf-Frame (Messwert + Status +
+        Sequenznummer + Ed25519-Signatur). Subscriber dürfen <strong>lesen,
+        niemals schreiben</strong>.
+      </p>
+
+      <h3>Datenmodell (Auszug)</h3>
+      <div class="cards cols-2">
+        <div class="card legal">
+          <h4>Eichrechtlich · SQLite WAL</h4>
+          <ul>
+            <li><code>dsar_entries</code> – fortlaufend, hash-verkettet, signiert</li>
+            <li><code>event_log</code> – Boot, Konfig, Plombenstatus</li>
+          </ul>
+        </div>
+        <div class="card app">
+          <h4>Fachlich · PostgreSQL</h4>
+          <ul>
+            <li><code>vehicles</code>, <code>customers</code>, <code>materials</code>, <code>orders</code></li>
+            <li><code>weighings</code> mit <code>dsar_id → dsar_entries.id</code></li>
+            <li><code>tickets</code>, <code>users</code>, <code>audit_app</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Stack-Empfehlung</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Bereich</th><th>Sprache / Tech</th><th>Begründung</th></tr></thead>
+          <tbody>
+            <tr><td>Legaler Kern (Bridge/Broker)</td><td class="mono">C++17 oder Rust</td><td>deterministisch, kleine Abhängigkeiten, prüfbar</td></tr>
+            <tr><td>Legal-Display</td><td class="mono">Qt/QML</td><td>eigenständig, robust, lange Verfügbarkeit</td></tr>
+            <tr><td>Applikations-API</td><td class="mono">Python FastAPI / Go</td><td>Produktivität, Ökosystem</td></tr>
+            <tr><td>Web-Frontend</td><td class="mono">TS + React/Svelte</td><td>statische Assets, Touch-tauglich</td></tr>
+            <tr><td>Datenbank</td><td class="mono">PostgreSQL 16</td><td>für Fachdaten; SQLite WAL für DSAR</td></tr>
+            <tr><td>Container nicht-legal</td><td class="mono">Podman</td><td>klare Update- und Rollback-Strategie</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─────────── 05 Features ─────────── -->
+    <section id="doc-05" class="doc">
+      <div class="doc-head">
+        <span class="num">05</span><h2>Features der Wiegesoftware</h2>
+        <span class="sub">Rollen · Wägung · Stammdaten · Selbstbedienung</span>
+      </div>
+
+      <h3>Rollen</h3>
+      <div class="cards cols-3">
+        <div class="card"><div class="icon">👨‍💼</div><h4>Waagmeister</h4><p>Wägungen erfassen, Wägescheine drucken, Stammdaten pflegen, Korrekturen.</p></div>
+        <div class="card"><div class="icon">📋</div><h4>Disponent</h4><p>Aufträge, Lieferungen, Auswertungen.</p></div>
+        <div class="card"><div class="icon">🚚</div><h4>Fahrer</h4><p>Selbstbedienung an der Säule per RFID.</p></div>
+        <div class="card"><div class="icon">🔧</div><h4>Service</h4><p>Konfiguration, Updates (nicht-legal), Diagnose.</p></div>
+        <div class="card"><div class="icon">🛡️</div><h4>Eichbeamter</h4><p>Read-only Audit über DSAR und Eventlog.</p></div>
+      </div>
+
+      <h3>Kern-Wiegefunktionen</h3>
+      <div class="cards cols-2">
+        <div class="card">
+          <h4>Live-Anzeige</h4>
+          <ul>
+            <li>Großgewichtsanzeige Brutto, Einheit, Vorzeichen</li>
+            <li>Status: Stillstand, Null, Brutto/Netto, Über-/Unterlast</li>
+            <li>Heartbeat &lt; 1 s, sonst rote Sperre</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Einzel- &amp; Doppelwägung</h4>
+          <ul>
+            <li>Tara aus Stammdaten oder Festtara-Eingabe</li>
+            <li>1./2. Wägung, Reihenfolge konfigurierbar</li>
+            <li>Stillstandskontrolle vor DSAR-Eintrag</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Wägeschein</h4>
+          <ul>
+            <li>A4 / Thermobon / PDF / E-Mail</li>
+            <li>Gewichtsführende Felder aus signiertem Template</li>
+            <li>Storno mit 4-Augen-Prinzip + neuem DSAR-Eintrag</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Tara-Verwaltung</h4>
+          <ul>
+            <li>Festtara pro Fahrzeug mit Gültigkeit</li>
+            <li>Erstwägungstara mit Verfallsdatum</li>
+            <li>Live-Tara aus aktuellem Bruttowert</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Selbstbedienung – Wizard</h3>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div><div><h4>1 · RFID auflegen</h4><p>Fahrzeug erkennen, Fahrer identifizieren – alternativ PIN oder QR.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div><h4>2 · Auftrag wählen</h4><p>Aus den offenen Aufträgen / Material wählen oder bestätigen.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div><h4>3 · Stillstand abwarten</h4><p>Großer Live-Wert, Hinweis &amp; Statusicons – Sperre solange instabil.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div><h4>4 · Beleg drucken</h4><p>Thermobon mit DSAR-Nummer, Schranke öffnet, Ampel grün.</p></div></div>
+        <div class="tl-item future"><div class="tl-dot"></div><div><h4>Optional · Beweisfoto</h4><p>Snapshot Kennzeichen + Brücke wird mit Wägung referenziert (nicht-legal).</p></div></div>
+      </div>
+
+      <h3>Notbetrieb &amp; Hochverfügbarkeit</h3>
+      <ul>
+        <li>Lokale Datenhaltung – ohne ERP/Internet voll arbeitsfähig.</li>
+        <li>Druckerausfall → PDF-Spool, manuell nachdruckbar.</li>
+        <li>Ausfall des Hauptdisplays → Zweitanzeige übernimmt aus gleichem <code>weight-broker</code>-Stream.</li>
+        <li>Backup auf zweite Platte, optional NAS/SFTP.</li>
+      </ul>
+    </section>
+
+    <!-- ─────────── 06 Rhewa-Protokoll ─────────── -->
+    <section id="doc-06" class="doc">
+      <div class="doc-head">
+        <span class="num">06</span><h2>Rhewa 84 V – Protokollanbindung</h2>
+        <span class="sub">Telegramme · Validierung · Simulator</span>
+      </div>
+
+      <h3>Schnittstellenparameter (geplant)</h3>
+      <div class="facts">
+        <div class="fact"><div class="k">Schnittstelle</div><div class="v">RS232 / RS485</div></div>
+        <div class="fact"><div class="k">Baudrate</div><div class="v">9600 (bis 115200)</div></div>
+        <div class="fact"><div class="k">Frame</div><div class="v">8N1</div></div>
+        <div class="fact"><div class="k">Trennung</div><div class="v">galvanisch</div></div>
+      </div>
+
+      <h3>Telegramm-Modi</h3>
+      <div class="cards cols-2">
+        <div class="card"><h4>Kontinuierliche Ausgabe</h4><p>~10 Hz Live-Strom für Anzeige &amp; Großdisplay.</p></div>
+        <div class="card"><h4>Print-Telegramm</h4><p>Auf Anforderung bei Stillstand, Quelle für DSAR-Eintrag.</p></div>
+        <div class="card"><h4>Anzeige-Mitlauf</h4><p>Identische Werte für externe Anzeige.</p></div>
+        <div class="card"><h4>Modbus-RTU/TCP</h4><p>Optional, sofern Modbus-Modul gesteckt.</p></div>
+      </div>
+
+      <h3>Parser-Pipeline</h3>
+      <pre class="diagram">  Serial RX  ──▶  Frame-Detect  ──▶  ASCII-Parser  ──▶  BCC/CRC-Check
+                                          │
+                                          ▼
+                                   Plausibilität
+                              (Wertbereich, Δt, Status)
+                                          │
+                                          ▼
+                          Protobuf-Frame + Ed25519-Sign
+                                          │
+                                          ▼
+                                   weight-broker  ───▶  Subscriber</pre>
+
+      <h3>Validierung</h3>
+      <ol>
+        <li>Prüfsumme korrekt – sonst verwerfen + Fehlerzähler erhöhen.</li>
+        <li>Plausibilität: Wert innerhalb des deklarierten Wägebereichs.</li>
+        <li>Zeitlicher Abstand seit letztem Telegramm &lt; 500 ms.</li>
+        <li>Telegramm-Typ stabil; Wechsel ohne Konfig → Fehlerereignis.</li>
+      </ol>
+
+      <h3>Diagnose &amp; Simulator</h3>
+      <p>
+        <code>rhewa-sim</code> emuliert das Terminal auf <code>/dev/ttyUSBx</code>
+        oder TCP. Konfigurierbar: Wertverlauf (Rampe/Treppe/Rauschen),
+        Stillstand, Über-/Unterlast, gestörte Frames (BCC-Fehler, halbe
+        Frames, Baudratenwechsel) – Basis für Unit- und HiL-Tests, kein
+        Bestandteil des Auslieferungs-Bundles.
+      </p>
+    </section>
+
+    <!-- ─────────── 07 Visualisierung ─────────── -->
+    <section id="doc-07" class="doc">
+      <div class="doc-head">
+        <span class="num">07</span><h2>Visualisierung &amp; UI</h2>
+        <span class="sub">Layouts · Mockups · Style</span>
+      </div>
+
+      <h3>UI-Schichten</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Schicht</th><th>Technik</th><th>Zweck</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge legal">Legal-Display</span></td><td class="mono">Qt/QML, Vollbild Touch</td><td>Eichrechtliche Wertanzeige + Wägeschein-Felder</td></tr>
+            <tr><td><span class="badge app">Waagmeister-UI</span></td><td class="mono">TS + React/Svelte (Kiosk)</td><td>Vollständige fachliche Bedienung</td></tr>
+            <tr><td><span class="badge app">Selbstbedien-UI</span></td><td class="mono">Web mit Säulen-Skin</td><td>Fahrer an der Außensäule</td></tr>
+            <tr><td><span class="badge app">Backoffice-UI</span></td><td class="mono">gleicher Stack im Browser</td><td>Disposition, Auswertung</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Mockup · Waagmeister-Touch</h3>
+      <div class="mockup">
+        <div class="titlebar">
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          legal-display · 84V Scale Server
+        </div>
+        <div class="legal-bar">
+          <div class="weight">10&nbsp;240<span class="unit">kg</span></div>
+          <div class="status">
+            <span class="pill">● STILL</span>
+            <span class="pill dim">○ NULL</span>
+            <span class="pill">● BRUTTO</span>
+            <span class="legal-meta">Rhewa SN 12345 / SW 1.4 · DSAR-Vorschau #00012345</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="fld"><div class="lbl">Fahrzeug</div><div class="val">BB-AB 1234 ▾</div></div>
+          <div class="fld"><div class="lbl">Material</div><div class="val">Splitt 0/16 ▾</div></div>
+          <div class="fld"><div class="lbl">Auftrag</div><div class="val">#4711 · 12 t</div></div>
+          <div class="fld"><div class="lbl">Tara (Fest, 30 d)</div><div class="val">7&nbsp;320 kg</div></div>
+          <div class="fld"><div class="lbl">Netto</div><div class="val" style="color: var(--accent);">2&nbsp;920 kg</div></div>
+          <div class="fld"><div class="lbl">Operator</div><div class="val">M. Müller</div></div>
+        </div>
+        <div class="actions">
+          <button class="btn primary">F1 · 1. Wägung</button>
+          <button class="btn">F2 · 2. Wägung</button>
+          <button class="btn">F3 · Einzel</button>
+          <button class="btn">F4 · Tara setzen</button>
+          <button class="btn">F5 · Drucken</button>
+        </div>
+        <div class="footer">
+          <span>Rhewa OK · USV 100 % · Drucker OK · ERP synced 10:01</span>
+          <span>v1.4.0 · build 2026-04-22</span>
+        </div>
+      </div>
+
+      <h3>Designprinzipien</h3>
+      <ul>
+        <li>Eichpflichtiger Wert oben, monotype, mind. 80 px hoch.</li>
+        <li>Status-Icons (Stillstand/Null/Brutto) sind Pflicht und nicht ausblendbar.</li>
+        <li>Aktionen mit DSAR-Eintrag eindeutig markiert &amp; nur bei Stillstand frei.</li>
+        <li>Bei Verbindungsverlust: Live-Wert ausgegraut, Wägung gesperrt.</li>
+        <li>Schriftart Live-Wert: nicht-proportional, fest, ohne dynamisches Größenwachstum.</li>
+      </ul>
+
+      <h3>Hot Keys (Waagmeister)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Taste</th><th>Funktion</th><th>Taste</th><th>Funktion</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">F1</td><td>1. Wägung erfassen</td><td class="mono">F6</td><td>Stamm Fahrzeug</td></tr>
+            <tr><td class="mono">F2</td><td>2. Wägung erfassen</td><td class="mono">F7</td><td>Stamm Material</td></tr>
+            <tr><td class="mono">F3</td><td>Einzelwägung</td><td class="mono">F8</td><td>Storno (4-Augen)</td></tr>
+            <tr><td class="mono">F4</td><td>Tara aus Stamm</td><td class="mono">F9</td><td>Letzte Wägung</td></tr>
+            <tr><td class="mono">F5</td><td>Wägeschein drucken</td><td class="mono">F12</td><td>Eichdaten / Info</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─────────── 08 Betrieb ─────────── -->
+    <section id="doc-08" class="doc">
+      <div class="doc-head">
+        <span class="num">08</span><h2>Betrieb &amp; Deployment</h2>
+        <span class="sub">Image · Update · Backup · Monitoring</span>
+      </div>
+
+      <h3>Image-Aufbau</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Pfad</th><th>Inhalt</th><th>Modus</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">/boot</td><td>Signierter Bootloader, Kernel, dm-verity-Hashes</td><td><span class="badge legal">signed</span></td></tr>
+            <tr><td class="mono">/</td><td>Read-only-Root (Debian)</td><td><span class="badge legal">ro</span></td></tr>
+            <tr><td class="mono">/opt/legal</td><td>scale-bridge, weight-broker, legal-display, audit</td><td><span class="badge legal">dm-verity</span></td></tr>
+            <tr><td class="mono">/opt/app</td><td>Container-Images / Binaries des nicht-legalen Teils</td><td><span class="badge app">rw</span></td></tr>
+            <tr><td class="mono">/var/lib/scaleserver</td><td>PostgreSQL, App-Daten, Druckspool</td><td><span class="badge app">rw</span></td></tr>
+            <tr><td class="mono">/var/lib/scaleserver/legal</td><td>DSAR + Eventlog (Mirror auf USB-SSD)</td><td><span class="badge legal">append-only</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Update-Strategie</h3>
+      <div class="cards cols-2">
+        <div class="card app">
+          <h4>Nicht-legaler Teil</h4>
+          <ul>
+            <li>Online/Offline via signierter <code>.deb</code> oder Container</li>
+            <li>A/B-Slots auf NVMe → einfacher Rollback</li>
+            <li>Automatisierbar; legaler Teil bleibt unbeeinflusst</li>
+          </ul>
+        </div>
+        <div class="card legal">
+          <h4>Legaler Teil</h4>
+          <ul>
+            <li>Nur durch geschulten Servicetechniker</li>
+            <li>Signiertes Bundle <code>legal-bundle.tar.zst.sig</code></li>
+            <li>W&amp;M-Schalter offen + Plomben-/Eventlog-Eintrag</li>
+            <li>dm-verity validiert neuen Hash beim Boot</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Monitoring · Pflicht-Alarme</h3>
+      <div class="cards cols-3">
+        <div class="card"><h4>📡 Telegrammausfall</h4><p>&gt; 10 s ohne gültiges Frame → Wägung sperren.</p></div>
+        <div class="card"><h4>⚠️ BCC-Fehlerquote</h4><p>&gt; 1 % im 60-s-Fenster → Schnittstelle prüfen.</p></div>
+        <div class="card"><h4>🔋 USV auf Akku</h4><p>Sauberes Shutdown nach 5 min Pufferzeit.</p></div>
+        <div class="card"><h4>💾 NVMe SMART</h4><p>Kritische Werte → Service-Alarm, DSAR-Mirror prüfen.</p></div>
+        <div class="card"><h4>🔒 Plombenschalter</h4><p>Offen &gt; 10 min außerhalb Service → Alarm.</p></div>
+        <div class="card"><h4>🧬 DSAR-Hashbruch</h4><p>Sofort harte Sperre, Eichbehörde informieren.</p></div>
+      </div>
+
+      <h3>Ausfallszenarien (Auszug)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Szenario</th><th>Reaktion</th></tr></thead>
+          <tbody>
+            <tr><td>Rhewa offline</td><td>Wägung gesperrt, Live-Wert ausgegraut, Eventlog-Eintrag</td></tr>
+            <tr><td>NVMe defekt</td><td>Failover auf USB-SSD-Mirror für DSAR; App-Funktionen reduziert</td></tr>
+            <tr><td>Stromausfall</td><td>USV puffert 10 min, sauberes Shutdown</td></tr>
+            <tr><td>Drucker offline</td><td>Beleg in PDF-Spool, Hinweis im UI, Nachdruck möglich</td></tr>
+            <tr><td>Display defekt</td><td>Web-UI auf Ersatztablet/Laptop, Großanzeige bleibt aktiv</td></tr>
+            <tr><td>DSAR-Hashbruch</td><td>Harte Sperre, Service-Einsatz, Behördenmeldung</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─────────── 09 Roadmap ─────────── -->
+    <section id="doc-09" class="doc">
+      <div class="doc-head">
+        <span class="num">09</span><h2>Roadmap, Risiken &amp; offene Fragen</h2>
+        <span class="sub">M0 → M6</span>
+      </div>
+
+      <h3>Meilensteine</h3>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div><div><div class="tl-meta">M0 · 4–6 Wochen</div><h4>Konzept &amp; Eichrechts-Klärung</h4><p>Abstimmung mit Eichbehörde · Telegramm-Variante des Rhewa verifizieren · BOM final.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div><div class="tl-meta">M1 · 4 Wochen</div><h4>HW-Prototyp</h4><p>CM4-Carrier &amp; Schaltschrank · stabile Rhewa-Verbindung · Touch-Panel + Drucker.</p></div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div><div class="tl-meta">M2 · 8 Wochen</div><h4>Legaler Software-Kern</h4><p>scale-bridge / weight-broker / legal-display / legal-audit · DSAR + dm-verity · HiL-Tests.</p></div></div>
+        <div class="tl-item future"><div class="tl-dot"></div><div><div class="tl-meta">M3 · 10 Wochen</div><h4>Fachapplikation MVP</h4><p>Wägung 1./2., Wägescheindruck, Web-UI, lokale DB, Backup, Update-Pipeline.</p></div></div>
+        <div class="tl-item future"><div class="tl-dot"></div><div><div class="tl-meta">M4 · 8 Wochen</div><h4>Selbstbedienung &amp; Integration</h4><p>Außensäule, RFID, Schranke, Ampel · ERP, MQTT, OPC-UA · Mehrsprachigkeit.</p></div></div>
+        <div class="tl-item future"><div class="tl-dot"></div><div><div class="tl-meta">M5 · 4–8 Wochen + Behörde</div><h4>Eichung &amp; Pilot</h4><p>Pilot beim Anwender, Begleitung Eichbehörde, Zertifizierungsdoku.</p></div></div>
+        <div class="tl-item future"><div class="tl-dot"></div><div><div class="tl-meta">M6</div><h4>Serienfreigabe</h4><p>BOM eingefroren, Lieferanten, Roll-out- &amp; Support-Konzept.</p></div></div>
+      </div>
+
+      <h3>Aufwandsindikation</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Bereich</th><th style="text-align:right;">Personentage</th></tr></thead>
+          <tbody>
+            <tr><td>Eichrechts-/Behördenklärung</td><td style="text-align:right;">20</td></tr>
+            <tr><td>Hardware-Engineering</td><td style="text-align:right;">40</td></tr>
+            <tr><td>Legaler Softwarekern</td><td style="text-align:right;">80</td></tr>
+            <tr><td>Fachapplikation</td><td style="text-align:right;">120</td></tr>
+            <tr><td>Selbstbedienung &amp; IO</td><td style="text-align:right;">50</td></tr>
+            <tr><td>Integration ERP / MQTT / OPC-UA</td><td style="text-align:right;">40</td></tr>
+            <tr><td>Test, HiL, Pilot</td><td style="text-align:right;">60</td></tr>
+            <tr><td>Doku, Schulung, Zertifizierung</td><td style="text-align:right;">30</td></tr>
+            <tr><td><strong>Summe</strong></td><td style="text-align:right;"><strong>≈ 440 PT</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Risiken</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Risiko</th><th>Wirkung</th><th>Gegenmaßnahme</th></tr></thead>
+          <tbody>
+            <tr class="risk-high"><td>R1</td><td>Eichbehörde fordert Baumusterprüfung</td><td>Termin/Kosten</td><td>Frühe Abstimmung in M0; Plan B „Kontrollanzeige"</td></tr>
+            <tr class="risk-mid"><td>R2</td><td>Telegramm-Variante abweichend</td><td>Implementierungsverzug</td><td>Sniffer in M1, Parser-Plugin-Architektur</td></tr>
+            <tr class="risk-mid"><td>R3</td><td>CM4-Verfügbarkeit</td><td>Lieferengpass</td><td>Alternative IPC vorbereiten, gleiche Schnittstellen</td></tr>
+            <tr class="risk-mid"><td>R4</td><td>EMV-Probleme im Schaltschrank</td><td>Telegrammfehler</td><td>Galvanische Trennung, Schirmung, frühe EMV-Messung</td></tr>
+            <tr class="risk-high"><td>R5</td><td>DSAR-Hashbruch durch Bug</td><td>Eichrechtsverletzung</td><td>Strenge Tests, Reviews, reproduzierbare Builds</td></tr>
+            <tr class="risk-mid"><td>R6</td><td>Update-Prozess legal Teil zu komplex</td><td>Fehlbedienung</td><td>Wizard, klare Doku, Schulung</td></tr>
+            <tr class="risk-mid"><td>R7</td><td>NVMe-Verschleiß durch Logging</td><td>Datenverlust</td><td>Industrie-NVMe, Logrotation, Mirror, SMART</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Offene Fragen</h3>
+      <ul>
+        <li>Welche konkrete Telegramm-Variante des Rhewa 84 V ist beim Kunden geschaltet?</li>
+        <li>Soll das Modul „eichamtliche Mitanzeige" oder reine „Kontrollanzeige" sein?</li>
+        <li>Sind Achswägungen gefordert, und ist der Eichbescheid des Rhewa dafür zugelassen?</li>
+        <li>Welche ERP-Systeme sind anzubinden?</li>
+        <li>Aufbewahrungsfrist DSAR / Wägescheine (handelsrechtlich i. d. R. 10 Jahre)?</li>
+        <li>Make-or-Buy bei Touch-Panels und Außensäule?</li>
+      </ul>
+    </section>
+
+    <footer class="foot">
+      <div>© 2026 · 84V Scale Server · Planungsdokumentation</div>
+      <div>Dieses Dokument ersetzt keine eichrechtliche Bewertung.</div>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Active TOC highlighting on scroll
+  const links = document.querySelectorAll('nav.toc a[href^="#"]');
+  const map = new Map();
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) map.set(el, a);
+  });
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      const link = map.get(en.target);
+      if (!link) return;
+      if (en.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+  map.forEach((_, el) => obs.observe(el));
+</script>
+
+</body>
+</html>

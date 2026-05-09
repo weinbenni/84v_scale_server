@@ -35,6 +35,19 @@ Hardware-Stückliste freigegeben sind.
 - **Visualisierung:** Lokales Touch-Display (HDMI/DSI) plus Web-UI für
   Waagmeister-Arbeitsplatz, Fahrer-Selbstbedienung und Auswertung.
 
+## Projektwebsite
+
+Eine anschauliche Single-Page-Site mit Architektur, Mockups und Roadmap
+liegt unter [`site/index.html`](site/index.html). Die Seite ist
+selbstgenügsam (HTML + CSS + minimal JS, keine Build-Tools) und kann
+direkt im Browser geöffnet oder über jeden statischen Webserver
+ausgeliefert werden:
+
+```bash
+python3 -m http.server --directory site 8080
+# → http://localhost:8080
+```
+
 ## Branch
 
 Entwicklung erfolgt auf `claude/plan-weighing-display-module-hCZWb`.
