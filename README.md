@@ -21,6 +21,8 @@ Hardware-Stückliste freigegeben sind.
 | [docs/07-visualisierung.md](docs/07-visualisierung.md) | UI/UX, Bildschirme, Bedienung |
 | [docs/08-betrieb-deployment.md](docs/08-betrieb-deployment.md) | Inbetriebnahme, Update, Backup, Monitoring |
 | [docs/09-roadmap.md](docs/09-roadmap.md) | Meilensteine, Risiken, offene Fragen |
+| [docs/10-feature-backlog.md](docs/10-feature-backlog.md) | App-Backlog: Epics, Stories, Akzeptanzkriterien, MoSCoW |
+| [docs/11-prerequisites.md](docs/11-prerequisites.md) | Prerequisites-Checkliste (Eichrecht, HW, OS, Daten, Build, Test) |
 
 ## Kurzfassung
 
